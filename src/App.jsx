@@ -100,7 +100,7 @@ export default function App() {
               value={pageSize}
               onChange={(e) => {
                 setPageSize(Number(e.target.value));
-                setCurrentPage(1); // Reset to page 1 when page size changes
+                setCurrentPage(1); 
               }}
             >
               <option value={15}>15</option>
