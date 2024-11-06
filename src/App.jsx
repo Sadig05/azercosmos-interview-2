@@ -1,60 +1,54 @@
-/*
-  TODO: 
-  Implement the functionality of Search, Pagination, Sort by column and Row size control
-*/
-
 import { useEffect, useState } from "react";
 import { fakeData } from "./data";
 import "./index.css";
 
 export default function App() {
-  const pageNumbers = [];
   const [search, setSearch] = useState("");
   const [data, setData] = useState(fakeData);
-  const [toggleSort, setToggleSort] = useState(false);
-  const [currentPage, setCurrentPages] = useState(1);
+  const [filteredData, setFilteredData] = useState(fakeData);
+  const [toggleSort, setToggleSort] = useState({ column: "", ascending: true });
+  const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
 
-  const sortNames = () => {
-    setToggleSort((prev) => !prev);
-
-    setData((prev) =>
-      prev?.sort((a, b) =>
-        toggleSort ? a.name.localeCompare(b.name) : b.name.localeCompare(a.name)
-      )
-    );
-  };
-
   const totalPageNumbers = () => {
-    for (let i = 1; i <= Math.ceil(data.length / pageSize); i++) {
-      pageNumbers.push(i);
-    }
-
-    return pageNumbers;
+    return Array.from({ length: Math.ceil(filteredData.length / pageSize) }, (_, i) => i + 1);
   };
 
   const changePage = (pageNum) => {
-    setCurrentPages(pageNum);
+    setCurrentPage(pageNum);
+  };
+
+  const sortData = (column) => {
+    setToggleSort((prev) => ({
+      column,
+      ascending: prev.column === column ? !prev.ascending : true
+    }));
+
+    setFilteredData((prev) =>
+      [...prev].sort((a, b) => {
+        const order = toggleSort.ascending ? 1 : -1;
+        return a[column].localeCompare(b[column]) * order;
+      })
+    );
   };
 
   useEffect(() => {
-    if (search) {
-      setData((prev) =>
-        prev.filter((item) =>
-          item?.name.toLowerCase().includes(search.toLowerCase())
-        )
-      );
-    } else {
-      setData(fakeData);
-    }
+    const filtered = fakeData.filter((item) =>
+      item.name.toLowerCase().includes(search.toLowerCase())
+    );
+    setFilteredData(filtered);
+    setCurrentPage(1); 
   }, [search]);
 
-  console.log(pageNumbers, " sad");
+  useEffect(() => {
+    setFilteredData(fakeData); 
+  }, []);
+
+  const paginatedData = filteredData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
     <div className="p-[20px] flex flex-col gap-2">
       {/* SEARCH */}
-
       <div className="flex gap-8">
         <div>
           <input
@@ -67,49 +61,35 @@ export default function App() {
       </div>
 
       {/* GRID SELF */}
-
       <div className="max-h-[calc(100vh-200px)] overflow-scroll border-b-2 border-[black]">
         <table className="table-layout w-full text-sm">
           <thead className="bg-[black] text-white">
             <tr className="text-left h-[35px]">
-              <th>
-                Name
-                <button onClick={sortNames} className="ml-2 p-[2px]">
-                  {toggleSort ? <>^</> : <>%</>}
-                </button>
-              </th>
-              <th>
-                Email<button className="ml-2 p-[2px]">^</button>
-              </th>
-              <th>
-                Occupation<button className="ml-2 p-[2px]">^</button>
-              </th>
-              <th>
-                City<button className="ml-2 p-[2px]">^</button>
-              </th>
-              <th>
-                Country<button className="ml-2 p-[2px]">^</button>
-              </th>
+              {["name", "email", "occupation", "city", "country"].map((col) => (
+                <th key={col}>
+                  {col.charAt(0).toUpperCase() + col.slice(1)}
+                  <button onClick={() => sortData(col)} className="ml-2 p-[2px]">
+                    {toggleSort.column === col && toggleSort.ascending ? "↑" : "↓"}
+                  </button>
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {data.map((data, index) => {
-              return (
-                <tr key={index} className="border">
-                  <td>{data.name}</td>
-                  <td className="font-bold">{data.email}</td>
-                  <td>{data.occupation}</td>
-                  <td className="text-[green]">{data.city}</td>
-                  <td>{data.country}</td>
-                </tr>
-              );
-            })}
+            {paginatedData.map((item, index) => (
+              <tr key={index} className="border">
+                <td>{item.name}</td>
+                <td className="font-bold">{item.email}</td>
+                <td>{item.occupation}</td>
+                <td className="text-[green]">{item.city}</td>
+                <td>{item.country}</td>
+              </tr>
+            ))}
           </tbody>
         </table>
       </div>
 
-      {/* PAGINATION */}
-
+      {/* PAGINATION AND ROW SIZE CONTROL */}
       <div className="flex justify-between">
         <div>
           <label htmlFor="row-size" className="flex gap-2 py-[5px]">
@@ -118,46 +98,42 @@ export default function App() {
               id="row-size"
               className="text-sm"
               value={pageSize}
-              onChange={(e) => setPageSize(e.target.value)}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1); // Reset to page 1 when page size changes
+              }}
             >
-              <option value={15} key={15}>
-                15
-              </option>
-              <option value={25} key={25}>
-                25
-              </option>
-              <option value={50} key={50}>
-                50
-              </option>
+              <option value={15}>15</option>
+              <option value={25}>25</option>
+              <option value={50}>50</option>
             </select>
           </label>
         </div>
 
-        <div></div>
-
         <div className="pagination flex justify-center items-center gap-4">
-          <button className="p-[5px]">{"<"}</button>
-
+          <button
+            className="p-[5px]"
+            onClick={() => changePage(Math.max(currentPage - 1, 1))}
+          >
+            {"<"}
+          </button>
           <div className="flex gap-2">
-            {totalPageNumbers()?.map((item) => (
+            {totalPageNumbers().map((item) => (
               <button
                 key={item}
-                className={` p-[5px] ${
-                  currentPage == item ? "active-pg-num" : ""
-                }`}
+                className={`p-[5px] ${currentPage === item ? "active-pg-num" : ""}`}
+                onClick={() => changePage(item)}
               >
                 {item}
               </button>
             ))}
-
-            {/* <button className="p-[5px] active-pg-num">1</button>
-            <button className="p-[5px] ">2</button>
-            <button className="p-[5px] ">3</button>
-            <button className="p-[5px] ">...</button>
-            <button className="p-[5px] ">10</button> */}
           </div>
-
-          <button className="p-[5px]">{">"}</button>
+          <button
+            className="p-[5px]"
+            onClick={() => changePage(Math.min(currentPage + 1, totalPageNumbers().length))}
+          >
+            {">"}
+          </button>
         </div>
       </div>
     </div>
